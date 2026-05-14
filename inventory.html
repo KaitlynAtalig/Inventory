@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaurant Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --page-bg:    #F2EDE4;
+  --bg:         #FFFFFF;
+  --bg-soft:    #FAF7F2;
+  --text:       #1A120A;
+  --text-sub:   #6B5E53;
+  --text-hint:  #B5A898;
+  --border:     #E4DAD0;
+  --border-dark:#CFC3B5;
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  18px;
+  --radius-xl:  24px;
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 6px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.07);
+  --shadow-lg:  0 8px 16px rgba(0,0,0,0.08), 0 24px 48px rgba(0,0,0,0.10);
+  --amber:      #C17D2E; --amber-2:#E09040; --amber-light:#FDF3E3; --amber-dark:#8A5519;
+  --red:        #C94040; --red-2:#E05050; --red-light:#FEF2F2; --red-dark:#9B2C2C;
+  --blue:       #2563A8; --blue-light:#EFF6FF;
+  --green:      #1F7A4A; --green-light:#EFFAF4;
+  --food-color: #C17D2E; --bev-color:#2563A8; --sup-color:#1F7A4A;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg:#13100D; --bg:#1E1813; --bg-soft:#251E17;
+    --text:#F5EDE3; --text-sub:#A09080; --text-hint:#5A5048;
+    --border:#302520; --border-dark:#403530;
+    --amber-light:#2A1D08; --red-light:#200C0C; --blue-light:#0A1526; --green-light:#081810;
+  }
+}
+body { font-family:'Plus Jakarta Sans',-apple-system,sans-serif; background:var(--page-bg); color:var(--text); min-height:100vh; font-size:14px; line-height:1.5; }
+.page { max-width:920px; margin:0 auto; padding:2.5rem 1.25rem 5rem; }
+.ic { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+.ic svg { display:block; }
+
+/* HEADER */
+.header { background:linear-gradient(135deg,#8A5519 0%,#C17D2E 45%,#E09040 100%); border-radius:var(--radius-xl); padding:1.75rem 2rem; margin-bottom:1.25rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; position:relative; overflow:hidden; }
+.header::before { content:""; position:absolute; top:-40px; right:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.07); pointer-events:none; }
+.header::after  { content:""; position:absolute; bottom:-60px; right:60px; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.05); pointer-events:none; }
+.header-left { display:flex; align-items:center; gap:16px; position:relative; z-index:1; }
+.header-icon { width:52px; height:52px; border-radius:var(--radius-md); background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:26px; flex-shrink:0; border:1px solid rgba(255,255,255,0.25); }
+.header h1 { font-size:22px; font-weight:800; color:#fff; letter-spacing:-.3px; }
+.header-meta { display:flex; align-items:center; gap:10px; margin-top:3px; flex-wrap:wrap; }
+.header p { font-size:13px; color:rgba(255,255,255,0.75); }
+.sync-pip { display:flex; align-items:center; gap:5px; }
+.sync-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.sync-dot.live { background:#6EE7B7; box-shadow:0 0 6px #6EE7B7; }
+.sync-dot.local { background:rgba(255,255,255,0.45); }
+.sync-dot.offline { background:#FCA5A5; }
+.sync-dot.connecting { background:#FDE68A; animation:pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.sync-label { font-size:12px; font-weight:600; }
+.sync-label.live { color:#6EE7B7; }
+.sync-label.local { color:rgba(255,255,255,0.6); }
+.sync-label.offline { color:#FCA5A5; }
+.sync-label.connecting { color:#FDE68A; }
+.header-right { display:flex; gap:8px; align-items:center; position:relative; z-index:1; flex-wrap:wrap; }
+.btn-add { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.35); color:#fff; border-radius:var(--radius-md); padding:10px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px; transition:all 0.15s; white-space:nowrap; }
+.btn-add:hover { background:rgba(255,255,255,0.3); }
+.btn-notify { background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.8); border-radius:var(--radius-md); padding:10px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px; transition:all 0.15s; white-space:nowrap; }
+.btn-notify:hover { background:rgba(255,255,255,0.22); color:#fff; }
+.btn-notify.on { background:rgba(110,231,183,0.2); border-color:rgba(110,231,183,0.4); color:#6EE7B7; }
+
+/* STATS */
+.stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; margin-bottom:1.25rem; }
+.stat-card { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:1.1rem 1.2rem; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; }
+.stat-card::before { content:""; position:absolute; top:0; left:0; right:0; height:3px; border-radius:3px 3px 0 0; }
+.stat-card.c-total::before { background:linear-gradient(90deg,#C17D2E,#E09040); }
+.stat-card.c-low::before   { background:linear-gradient(90deg,#C94040,#E05050); }
+.stat-card.c-food::before  { background:var(--food-color); }
+.stat-card.c-bev::before   { background:var(--bev-color); }
+.stat-card.c-sup::before   { background:var(--sup-color); }
+.stat-card.alert { background:var(--red-light); border-color:#FBCBCB; }
+.stat-label { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-sub); margin-bottom:6px; }
+.stat-card.alert .stat-label { color:var(--red); }
+.stat-value { font-size:30px; font-weight:800; line-height:1; letter-spacing:-.5px; }
+.stat-card.alert .stat-value { color:var(--red); }
+
+/* ALERT BANNER */
+.alert-banner { background:var(--red-light); border:1px solid #FBCBCB; border-left:4px solid var(--red); border-radius:var(--radius-md); padding:14px 16px; margin-bottom:1.25rem; display:flex; gap:12px; align-items:flex-start; }
+.alert-icon { color:var(--red); flex-shrink:0; margin-top:1px; }
+.alert-title { font-size:13px; font-weight:700; color:var(--red); margin-bottom:8px; }
+.alert-tags { display:flex; flex-wrap:wrap; gap:6px; }
+.alert-tag { font-size:12px; font-weight:600; background:var(--bg); color:var(--red-2); border:1px solid #FBCBCB; border-radius:100px; padding:4px 12px; cursor:pointer; transition:all 0.12s; }
+.alert-tag:hover { border-color:var(--red); background:var(--red-light); filter:brightness(.96); }
+
+/* MAIN CARD */
+.main-card { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); overflow:hidden; }
+.toolbar { padding:1rem 1.25rem; border-bottom:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap; align-items:center; background:var(--bg-soft); }
+.search-input { flex:1; min-width:160px; padding:9px 14px; border:1px solid var(--border-dark); border-radius:100px; background:var(--bg); color:var(--text); font-size:14px; font-family:inherit; outline:none; transition:border-color 0.15s,box-shadow 0.15s; }
+.search-input:focus { border-color:var(--amber); box-shadow:0 0 0 3px rgba(193,125,46,0.12); }
+.tabs { display:flex; gap:4px; flex-wrap:wrap; }
+.tab { padding:7px 16px; font-size:13px; font-weight:600; border-radius:100px; cursor:pointer; border:1px solid var(--border-dark); background:transparent; color:var(--text-sub); font-family:inherit; transition:all 0.12s; white-space:nowrap; }
+.tab:hover:not(.active) { background:var(--bg); color:var(--text); }
+.tab.active { background:var(--amber); color:#fff; border-color:var(--amber); }
+
+/* TABLE */
+.table-scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed; }
+thead tr { background:var(--bg-soft); border-bottom:1px solid var(--border); }
+th { padding:10px 18px; text-align:left; font-size:11px; font-weight:700; color:var(--text-hint); letter-spacing:.07em; text-transform:uppercase; white-space:nowrap; }
+th.th-center { text-align:center; }
+th.th-right  { text-align:right; }
+tbody tr { border-bottom:1px solid var(--border); transition:background 0.1s; }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:var(--bg-soft); }
+tbody tr.low-stock { border-left:3px solid var(--red-2); }
+tbody tr.low-stock td:first-child { padding-left:15px; }
+tbody tr.low-stock:hover { background:var(--red-light); }
+td { padding:12px 18px; vertical-align:middle; }
+.name-cell { display:flex; align-items:center; gap:10px; font-weight:600; white-space:nowrap; }
+.cat-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.badge { font-size:11px; font-weight:700; padding:4px 10px; border-radius:100px; white-space:nowrap; }
+.low-badge { font-size:10px; font-weight:800; letter-spacing:.06em; background:var(--red); color:#fff; padding:3px 8px; border-radius:100px; flex-shrink:0; }
+.qty-controls { display:flex; align-items:center; gap:8px; justify-content:center; }
+.qty-btn { width:28px; height:28px; border-radius:50%; border:1.5px solid var(--border-dark); background:var(--bg); color:var(--text-sub); cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:all 0.12s; flex-shrink:0; font-family:inherit; }
+.qty-btn:hover { background:var(--amber-light); border-color:var(--amber); color:var(--amber); }
+.qty-num { font-size:15px; font-weight:700; min-width:34px; text-align:center; }
+.qty-num.low { color:var(--red); }
+.qty-unit { font-size:12px; color:var(--text-hint); min-width:28px; font-weight:500; }
+.td-center { text-align:center; }
+.td-right  { text-align:right; color:var(--text-sub); font-size:13px; }
+.icon-btn { background:none; border:none; cursor:pointer; padding:6px; border-radius:var(--radius-sm); transition:all 0.12s; display:inline-flex; align-items:center; justify-content:center; }
+.icon-btn.danger { color:var(--text-hint); }
+.icon-btn.danger:hover { color:var(--red); background:var(--red-light); }
+.icon-btn.edit { color:var(--text-hint); }
+.icon-btn.edit:hover { color:var(--amber); background:var(--amber-light); }
+.empty { padding:5rem 2rem; text-align:center; }
+.empty-icon { color:var(--text-hint); margin-bottom:14px; display:flex; justify-content:center; }
+.empty h3 { font-size:17px; font-weight:700; margin-bottom:6px; }
+.empty p  { font-size:14px; color:var(--text-sub); }
+
+/* MODAL */
+.overlay { position:fixed; inset:0; background:rgba(10,6,2,0.55); display:flex; align-items:center; justify-content:center; padding:1rem; z-index:200; animation:fadeIn 0.15s ease; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.modal { background:var(--bg); border-radius:var(--radius-lg); border:1px solid var(--border); box-shadow:var(--shadow-lg); padding:2rem; width:100%; max-width:480px; animation:slideUp 0.2s ease; }
+@keyframes slideUp { from{transform:translateY(16px);opacity:0} to{transform:none;opacity:1} }
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; }
+.modal-header h2 { font-size:19px; font-weight:800; }
+.form-field { margin-bottom:16px; }
+.form-field label { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-sub); display:block; margin-bottom:7px; }
+.form-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+input[type=text],input[type=number],select { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:var(--radius-md); background:var(--bg-soft); color:var(--text); font-size:14px; font-family:inherit; outline:none; transition:border-color 0.15s,background 0.15s,box-shadow 0.15s; }
+input:focus,select:focus { border-color:var(--amber); background:var(--bg); box-shadow:0 0 0 3px rgba(193,125,46,0.12); }
+.field-hint { font-size:12px; color:var(--text-hint); margin-top:6px; }
+.modal-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border); }
+.btn { padding:10px 20px; font-size:14px; font-weight:700; border-radius:var(--radius-md); cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:7px; transition:all 0.15s; border:none; }
+.btn-primary { background:var(--amber); color:#fff; }
+.btn-primary:hover { background:var(--amber-dark); }
+.btn-ghost { background:transparent; color:var(--text-sub); border:1.5px solid var(--border-dark); }
+.btn-ghost:hover { background:var(--bg-soft); color:var(--text); }
+.btn-danger { background:var(--red); color:#fff; }
+.btn-danger:hover { background:var(--red-dark); }
+
+/* TOAST */
+.toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:var(--text); color:#FDF3E3; font-size:13px; font-weight:600; padding:11px 20px; border-radius:100px; box-shadow:var(--shadow-lg); display:flex; align-items:center; gap:8px; z-index:300; white-space:nowrap; animation:toastIn 0.22s ease; pointer-events:none; }
+.toast.hide { animation:toastOut 0.2s ease forwards; }
+@keyframes toastIn  { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+@keyframes toastOut { from{opacity:1;transform:translateX(-50%) translateY(0)} to{opacity:0;transform:translateX(-50%) translateY(10px)} }
+
+@media (max-width:580px) {
+  .page { padding:1.25rem .85rem 3rem; }
+  .col-hide { display:none; }
+  .header { padding:1.25rem; }
+  .header h1 { font-size:18px; }
+  td,th { padding-left:12px; padding-right:12px; }
+}
+</style>
+</head>
+<body>
+<div class="page"><div id="app"></div></div>
+<script>
+// ╔══════════════════════════════════════════════════════════════╗
+//  STEP 1 — Your restaurant name
+// ╚══════════════════════════════════════════════════════════════╝
+const RESTAURANT_NAME = "Vietbowl Inventory";
+
+// ╔══════════════════════════════════════════════════════════════╗
+//  STEP 2 — Supabase config (free, no credit card)
+//
+//  Setup (5 minutes):
+//  1. Go to https://supabase.com and sign up with email
+//  2. Click "New project", give it a name, set a password
+//  3. Go to Settings → API and copy the URL and anon key below
+//  4. Go to the SQL Editor and run this to create your table:
+//
+//     create table inventory (
+//       id text primary key,
+//       name text not null,
+//       category text not null,
+//       quantity numeric not null,
+//       unit text not null,
+//       threshold numeric not null
+//     );
+//     alter table inventory enable row level security;
+//     create policy "allow_all" on inventory for all using (true) with check (true);
+//
+//  Leave the strings empty to use local storage only (no sync).
+// ╚══════════════════════════════════════════════════════════════╝
+const SUPABASE_URL = "https://iseusjbjwfxepzwdvgbi.supabase.co";
+const SUPABASE_KEY = "sb_publishable_87nvO7VRTdXpmtuww-LEXQ_O8ZWF_9v";
+
+// ─────────────────────────────────────────────────────────────
+const USE_SYNC    = SUPABASE_URL !== "" && SUPABASE_KEY !== "";
+const STORAGE_KEY = "inv-v1";
+const CATEGORIES  = ["Food & Ingredients", "Beverages", "Supplies"];
+const UNITS       = ["lbs","oz","kg","g","gallons","liters","qt","fl oz","cases","boxes","bags","packs","rolls","bottles","cans","jars","cartons","dozen","pcs","units"];
+
+const SAMPLE = [
+  {id:"1",  name:"All-Purpose Flour", category:"Food & Ingredients", quantity:25, unit:"lbs",     threshold:10},
+  {id:"2",  name:"Olive Oil",         category:"Food & Ingredients", quantity:2,  unit:"gallons", threshold:5},
+  {id:"3",  name:"Chicken Breast",    category:"Food & Ingredients", quantity:8,  unit:"lbs",     threshold:15},
+  {id:"4",  name:"Rice",              category:"Food & Ingredients", quantity:20, unit:"lbs",     threshold:8},
+  {id:"5",  name:"Coca-Cola",         category:"Beverages",          quantity:3,  unit:"cases",   threshold:5},
+  {id:"6",  name:"Orange Juice",      category:"Beverages",          quantity:6,  unit:"gallons", threshold:4},
+  {id:"7",  name:"Water Bottles",     category:"Beverages",          quantity:2,  unit:"cases",   threshold:4},
+  {id:"8",  name:"Napkins",           category:"Supplies",           quantity:2,  unit:"packs",   threshold:3},
+  {id:"9",  name:"To-Go Containers",  category:"Supplies",           quantity:4,  unit:"cases",   threshold:2},
+  {id:"10", name:"Gloves (box)",      category:"Supplies",           quantity:3,  unit:"boxes",   threshold:2},
+];
+
+// ── ICONS ──────────────────────────────────────────────────────
+const SVG = {
+  plus:  (s=16) => `<span class="ic"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>`,
+  warn:  (s=16) => `<span class="ic"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>`,
+  bell:  (s=14) => `<span class="ic"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></span>`,
+  inbox: (s=40) => `<span class="ic"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg></span>`,
+  edit:  (s=15) => `<span class="ic"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>`,
+  trash: (s=15) => `<span class="ic"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></span>`,
+  x:     (s=18) => `<span class="ic"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>`,
+  check: (s=16) => `<span class="ic"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>`,
+};
+
+// ── SUPABASE SETUP ─────────────────────────────────────────────
+let sb = null;
+if (USE_SYNC) {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
+
+// ── STATE ──────────────────────────────────────────────────────
+let items          = [];
+let activeCategory = "All";
+let search         = "";
+let modal          = null;
+let editId         = null;
+let deleteId       = null;
+let form           = emptyForm();
+let toastTimer     = null;
+let syncStatus     = USE_SYNC ? "connecting" : "local";
+let notifEnabled   = Notification?.permission === "granted";
+let prevLowIds     = new Set();
+
+function emptyForm() {
+  return { name:"", category:"Food & Ingredients", quantity:"", unit:"lbs", threshold:"" };
+}
+
+// ── NOTIFICATIONS ──────────────────────────────────────────────
+async function requestNotifications() {
+  if (!("Notification" in window)) { toast("Notifications not supported here"); return; }
+  if (Notification.permission === "granted") {
+    notifEnabled = true; render(); toast("Notifications already on"); return;
+  }
+  const perm = await Notification.requestPermission();
+  notifEnabled = perm === "granted";
+  render();
+  toast(notifEnabled ? "Alerts enabled!" : "Blocked — check your browser settings");
+}
+
+function sendLowAlert(item) {
+  if (!notifEnabled || Notification.permission !== "granted") return;
+  try {
+    new Notification(`⚠️ ${item.name} is running low`, {
+      body: `Only ${item.quantity} ${item.unit} remaining — reorder soon`,
+      tag:  "low-" + item.id,
+    });
+  } catch(e) {}
+}
+
+function checkForNewLow(updated) {
+  updated.forEach(item => {
+    if (isLow(item) && !prevLowIds.has(item.id)) sendLowAlert(item);
+  });
+  prevLowIds = new Set(updated.filter(isLow).map(i => i.id));
+}
+
+// ── LOCAL STORAGE ──────────────────────────────────────────────
+function loadLocal() {
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) return JSON.parse(r); } catch(e){}
+  return SAMPLE;
+}
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch(e){}
+}
+
+// ── SUPABASE SYNC ──────────────────────────────────────────────
+async function startSync() {
+  if (!sb) return;
+
+  // Load initial data
+  const { data, error } = await sb.from("inventory").select("*");
+  if (error) { syncStatus = "offline"; render(); return; }
+
+  // Seed with sample data if table is empty
+  if (data.length === 0) {
+    await sb.from("inventory").insert(SAMPLE);
+    items = [...SAMPLE];
+  } else {
+    items = data;
+  }
+
+  syncStatus = "live";
+  prevLowIds = new Set(items.filter(isLow).map(i => i.id));
+  render();
+}
+
+  // Listen for real-time changes from anyone
+  sb.channel("inventory-changes")
+  .on(
+    "postgres_changes",
+    {
+      event: "*",
+      schema: "public",
+      table: "inventory"
+    },
+    payload => {
+
+      console.log("Realtime event:", payload);
+
+      if (payload.eventType === "INSERT") {
+
+        const exists = items.find(i => i.id === payload.new.id);
+
+        if (!exists) {
+          items.push(payload.new);
+        }
+
+      } else if (payload.eventType === "UPDATE") {
+
+        const idx = items.findIndex(i => i.id === payload.new.id);
+
+        if (idx >= 0) {
+          items[idx] = payload.new;
+        }
+
+      } else if (payload.eventType === "DELETE") {
+
+        items = items.filter(
+          i => i.id !== payload.old.id
+        );
+      }
+
+      checkForNewLow(items);
+      render();
+    }
+  )
+  .subscribe(status => {
+
+    console.log("Realtime status:", status);
+
+    syncStatus =
+      status === "SUBSCRIBED"
+        ? "live"
+        : status === "CHANNEL_ERROR"
+        ? "offline"
+        : "connecting";
+
+    render();
+  });
+
+async function writeItem(item) {
+  if (sb) {
+    await sb.from("inventory").upsert(item);
+    // Real-time listener will update state
+  } else {
+    const idx = items.findIndex(i => i.id === item.id);
+    if (idx >= 0) items[idx] = item; else items.push(item);
+    saveLocal();
+    render();
+  }
+}
+
+async function removeItem(id) {
+  // LOCAL MODE
+  if (!sb) {
+    items = items.filter(i => i.id !== id);
+    saveLocal();
+    render();
+    return;
+  }
+
+  // SUPABASE MODE
+  try {
+    const { error } = await sb
+      .from("inventory")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Delete failed:", error);
+      toast("Failed to delete item");
+      return;
+    }
+
+    // REMOVE IMMEDIATELY FROM UI
+    // (don't wait for realtime event)
+    items = items.filter(i => i.id !== id);
+
+    // update low-stock tracker
+    prevLowIds = new Set(
+      items.filter(isLow).map(i => i.id)
+    );
+
+    render();
+
+    console.log("Deleted successfully");
+
+  } catch (err) {
+    console.error("Unexpected delete error:", err);
+    toast("Something went wrong");
+  }
+}
+
+// ── HELPERS ────────────────────────────────────────────────────
+function isLow(item)  { return parseFloat(item.quantity) <= parseFloat(item.threshold); }
+function getLow()     { return items.filter(isLow); }
+function shortCat(c)  { return c === "Food & Ingredients" ? "Food" : c; }
+function nextId()     { return "i" + Date.now(); }
+
+function catDotStyle(cat) {
+  const m = {"Food & Ingredients":"var(--food-color)","Beverages":"var(--bev-color)","Supplies":"var(--sup-color)"};
+  return `background:${m[cat]||"var(--text-hint)"}`;
+}
+function badgeStyle(cat) {
+  if (cat==="Food & Ingredients") return "background:var(--amber-light);color:var(--amber);";
+  if (cat==="Beverages")          return "background:var(--blue-light);color:var(--blue);";
+  return "background:var(--green-light);color:var(--green);";
+}
+function filtered() {
+  return items.filter(i => {
+    const c = activeCategory==="All" || i.category===activeCategory;
+    const s = i.name.toLowerCase().includes(search.toLowerCase());
+    return c && s;
+  });
+}
+
+function toast(msg, type="check") {
+  document.querySelector(".toast")?.remove();
+  if (toastTimer) clearTimeout(toastTimer);
+  const icon = {trash:SVG.trash(14), plus:SVG.plus(14)}[type] || SVG.check(14);
+  const el = Object.assign(document.createElement("div"), { className:"toast", innerHTML: icon+msg });
+  document.body.appendChild(el);
+  toastTimer = setTimeout(() => { el.classList.add("hide"); setTimeout(()=>el.remove(),250); }, 2400);
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────
+function openAdd() { form=emptyForm(); modal="add"; render(); setTimeout(()=>document.getElementById("f-name")?.focus(),50); }
+function openEdit(id) {
+  const it = items.find(i=>i.id===id);
+  form = {name:it.name, category:it.category, quantity:it.quantity, unit:it.unit, threshold:it.threshold};
+  editId=id; modal="edit"; render();
+  setTimeout(()=>document.getElementById("f-name")?.focus(),50);
+}
+function openDelete(id) { deleteId=id; modal="delete"; render(); }
+function closeModal()   { modal=null; editId=null; deleteId=null; render(); }
+
+async function adjustQty(id, delta) {
+  const item = items.find(i=>i.id===id);
+  if (!item) return;
+  const updated = {...item, quantity:parseFloat(Math.max(0,parseFloat(item.quantity)+delta).toFixed(2))};
+  if (!isLow(item) && isLow(updated)) sendLowAlert(updated);
+  await writeItem(updated);
+}
+
+function readForm() {
+  form.name      = (document.getElementById("f-name")?.value||"").trim();
+  form.category  = document.getElementById("f-cat")?.value || form.category;
+  form.quantity  = document.getElementById("f-qty")?.value || "";
+  form.unit      = document.getElementById("f-unit")?.value || form.unit;
+  form.threshold = document.getElementById("f-thresh")?.value || "";
+}
+
+async function saveForm() {
+  readForm();
+  if (!form.name || form.quantity==="" || form.threshold==="") {
+    ["f-name","f-qty","f-thresh"].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el&&!el.value.trim()) el.style.borderColor="var(--red)";
+    });
+    return;
+  }
+  const id   = modal==="edit" ? editId : nextId();
+  const item = {id, name:form.name, category:form.category, quantity:parseFloat(form.quantity), unit:form.unit, threshold:parseFloat(form.threshold)};
+  await writeItem(item);
+  toast(modal==="edit"?"Item updated":"Item added", modal==="edit"?"check":"plus");
+  closeModal();
+}
+
+async function doDelete() {
+  const name = items.find(i=>i.id===deleteId)?.name;
+  await removeItem(deleteId);
+  toast(`Removed "${name}"`, "trash");
+  closeModal();
+}
+
+// ── RENDER ─────────────────────────────────────────────────────
+function render() { document.getElementById("app").innerHTML = buildApp(); }
+
+function buildApp() {
+  const low    = getLow();
+  const cats   = {};
+  CATEGORIES.forEach(c => cats[c] = items.filter(i=>i.category===c).length);
+  const rows   = filtered();
+  const isEdit = modal === "edit";
+  const catOpts  = CATEGORIES.map(c=>`<option value="${c}" ${form.category===c?"selected":""}>${c}</option>`).join("");
+  const unitOpts = UNITS.map(u=>`<option value="${u}" ${form.unit===u?"selected":""}>${u}</option>`).join("");
+  const sc = syncStatus;
+
+  return `
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">🍽️</div>
+    <div>
+      <h1>${RESTAURANT_NAME}</h1>
+      <div class="header-meta">
+        <p>${items.length} items &nbsp;·&nbsp; ${low.length} low stock</p>
+        <span style="color:rgba(255,255,255,0.3)">|</span>
+        <span class="sync-pip">
+          <span class="sync-dot ${sc}"></span>
+          <span class="sync-label ${sc}">${{live:"Live sync",connecting:"Connecting…",offline:"Offline",local:"Local only"}[sc]}</span>
+        </span>
+      </div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn-notify ${notifEnabled?"on":""}" onclick="requestNotifications()">
+      ${SVG.bell(14)} ${notifEnabled?"Alerts on":"Enable alerts"}
+    </button>
+    <button class="btn-add" onclick="openAdd()">${SVG.plus(15)} Add item</button>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card c-total"><div class="stat-label">Total</div><div class="stat-value">${items.length}</div></div>
+  <div class="stat-card c-low ${low.length>0?"alert":""}"><div class="stat-label">Low stock</div><div class="stat-value">${low.length}</div></div>
+  <div class="stat-card c-food"><div class="stat-label">Food</div><div class="stat-value">${cats["Food & Ingredients"]}</div></div>
+  <div class="stat-card c-bev"><div class="stat-label">Beverages</div><div class="stat-value">${cats["Beverages"]}</div></div>
+  <div class="stat-card c-sup"><div class="stat-label">Supplies</div><div class="stat-value">${cats["Supplies"]}</div></div>
+</div>
+
+${low.length>0?`
+<div class="alert-banner">
+  <span class="alert-icon">${SVG.warn(17)}</span>
+  <div>
+    <div class="alert-title">Items running low — tap to restock</div>
+    <div class="alert-tags">${low.map(i=>`<span class="alert-tag" onclick="openEdit('${i.id}')">${i.name} &nbsp;·&nbsp; ${i.quantity} ${i.unit}</span>`).join("")}</div>
+  </div>
+</div>`:""}
+
+<div class="main-card">
+  <div class="toolbar">
+    <input class="search-input" type="text" placeholder="Search items…" value="${search.replace(/"/g,"&quot;")}" oninput="search=this.value;render()">
+    <div class="tabs">
+      ${["All",...CATEGORIES].map(t=>`<button class="tab ${activeCategory===t?"active":""}" onclick="activeCategory='${t}';render()">${shortCat(t)}</button>`).join("")}
+    </div>
+  </div>
+  <div class="table-scroll">
+    ${rows.length===0?`
+    <div class="empty">
+      <div class="empty-icon">${SVG.inbox(42)}</div>
+      <h3>${search?"Nothing matches that search":"No items yet"}</h3>
+      <p>${search?"Try a different keyword":"Add your first item to get started"}</p>
+    </div>`:`
+    <table>
+      <thead><tr>
+        <th style="width:33%">Item</th>
+        <th class="col-hide" style="width:16%">Category</th>
+        <th class="th-center" style="width:31%">Quantity</th>
+        <th class="col-hide th-right" style="width:12%">Alert at</th>
+        <th class="th-center" style="width:8%"></th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(item=>{
+          const low=isLow(item);
+          return `
+          <tr class="${low?"low-stock":""}">
+            <td><div class="name-cell">
+              <span class="cat-dot" style="${catDotStyle(item.category)}"></span>
+              ${item.name}
+              ${low?`<span class="low-badge">LOW</span>`:""}
+            </div></td>
+            <td class="col-hide"><span class="badge" style="${badgeStyle(item.category)}">${shortCat(item.category)}</span></td>
+            <td><div class="qty-controls">
+              <button class="qty-btn" onclick="adjustQty('${item.id}',-1)">−</button>
+              <span class="qty-num ${low?"low":""}">${item.quantity}</span>
+              <span class="qty-unit">${item.unit}</span>
+              <button class="qty-btn" onclick="adjustQty('${item.id}',1)">+</button>
+            </div></td>
+            <td class="col-hide td-right">${item.threshold} ${item.unit}</td>
+            <td class="td-center">
+              <button class="icon-btn edit"   onclick="openEdit('${item.id}')">${SVG.edit(15)}</button>
+              <button class="icon-btn danger" onclick="openDelete('${item.id}')">${SVG.trash(15)}</button>
+            </td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>`}
+  </div>
+</div>
+
+${modal==="add"||modal==="edit"?`
+<div class="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>${isEdit?"Edit item":"Add new item"}</h2>
+      <button class="icon-btn" onclick="closeModal()" style="color:var(--text-sub)">${SVG.x(18)}</button>
+    </div>
+    <div class="form-field"><label>Item name</label><input id="f-name" type="text" placeholder="e.g. Chicken Breast" value="${form.name.replace(/"/g,"&quot;")}"></div>
+    <div class="form-field"><label>Category</label><select id="f-cat">${catOpts}</select></div>
+    <div class="form-row">
+      <div class="form-field"><label>Current quantity</label><input id="f-qty" type="number" min="0" step="0.1" placeholder="0" value="${form.quantity}"></div>
+      <div class="form-field"><label>Unit</label><select id="f-unit">${unitOpts}</select></div>
+    </div>
+    <div class="form-field">
+      <label>Low stock alert threshold</label>
+      <input id="f-thresh" type="number" min="0" step="0.1" placeholder="e.g. 5" value="${form.threshold}">
+      <div class="field-hint">You'll be notified when quantity drops to or below this</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveForm()">${isEdit?SVG.check(15):SVG.plus(15)} ${isEdit?"Save changes":"Add item"}</button>
+    </div>
+  </div>
+</div>`:""}
+
+${modal==="delete"?(()=>{
+  const it=items.find(i=>i.id===deleteId);
+  return `
+<div class="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h2>Remove item?</h2>
+      <button class="icon-btn" onclick="closeModal()" style="color:var(--text-sub)">${SVG.x(18)}</button>
+    </div>
+    <p style="font-size:14px;color:var(--text-sub);line-height:1.7"><strong style="color:var(--text);font-weight:700">${it?.name}</strong> will be permanently removed. This can't be undone.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="doDelete()">${SVG.trash(15)} Remove</button>
+    </div>
+  </div>
+</div>`;
+})():""}
+`;
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+if (USE_SYNC) {
+  render(); // show loading state
+  startSync();
+} else {
+  items = loadLocal();
+  prevLowIds = new Set(items.filter(isLow).map(i=>i.id));
+  render();
+}
+</script>
+</body>
+</html>
