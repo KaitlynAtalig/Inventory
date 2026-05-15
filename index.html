@@ -308,75 +308,107 @@ async function startSync() {
   if (!sb) return;
 
   // Load initial data
-  const { data, error } = await sb.from("inventory").select("*");
-  if (error) { syncStatus = "offline"; render(); return; }
+  const { data, error } = await sb
+    .from("inventory")
+    .select("*");
 
-  // Seed with sample data if table is empty
+  if (error) {
+    console.error("Initial load failed:", error);
+    syncStatus = "offline";
+    render();
+    return;
+  }
+
+  // Seed sample data if table is empty
   if (data.length === 0) {
-    await sb.from("inventory").insert(SAMPLE);
+
+    const { error: seedError } = await sb
+      .from("inventory")
+      .insert(SAMPLE);
+
+    if (seedError) {
+      console.error("Seed failed:", seedError);
+    }
+
     items = [...SAMPLE];
+
   } else {
+
     items = data;
   }
 
   syncStatus = "live";
-  prevLowIds = new Set(items.filter(isLow).map(i => i.id));
+
+  prevLowIds = new Set(
+    items.filter(isLow).map(i => i.id)
+  );
+
   render();
-}
 
-  // Listen for real-time changes from anyone
+  // REALTIME SYNC
   sb.channel("inventory-changes")
-  .on(
-    "postgres_changes",
-    {
-      event: "*",
-      schema: "public",
-      table: "inventory"
-    },
-    payload => {
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "inventory"
+      },
+      payload => {
 
-      console.log("Realtime event:", payload);
+        console.log("Realtime event:", payload);
 
-      if (payload.eventType === "INSERT") {
+        // INSERT
+        if (payload.eventType === "INSERT") {
 
-        const exists = items.find(i => i.id === payload.new.id);
+          const exists = items.find(
+            i => i.id === payload.new.id
+          );
 
-        if (!exists) {
-          items.push(payload.new);
+          if (!exists) {
+            items.push(payload.new);
+          }
         }
 
-      } else if (payload.eventType === "UPDATE") {
+        // UPDATE
+        else if (payload.eventType === "UPDATE") {
 
-        const idx = items.findIndex(i => i.id === payload.new.id);
+          const idx = items.findIndex(
+            i => i.id === payload.new.id
+          );
 
-        if (idx >= 0) {
-          items[idx] = payload.new;
+          if (idx >= 0) {
+            items[idx] = payload.new;
+          }
         }
 
-      } else if (payload.eventType === "DELETE") {
+        // DELETE
+        else if (payload.eventType === "DELETE") {
 
-        items = items.filter(
-          i => i.id !== payload.old.id
-        );
+          items = items.filter(
+            i => i.id !== payload.old.id
+          );
+        }
+
+        checkForNewLow(items);
+
+        render();
       }
+    )
+    .subscribe(status => {
 
-      checkForNewLow(items);
+      console.log("Realtime status:", status);
+
+      syncStatus =
+        status === "SUBSCRIBED"
+          ? "live"
+          : status === "CHANNEL_ERROR"
+          ? "offline"
+          : "connecting";
+
       render();
-    }
-  )
-  .subscribe(status => {
-
-    console.log("Realtime status:", status);
-
-    syncStatus =
-      status === "SUBSCRIBED"
-        ? "live"
-        : status === "CHANNEL_ERROR"
-        ? "offline"
-        : "connecting";
-
-    render();
-  });
+    });
+}
 
 async function writeItem(item) {
   if (sb) {
@@ -476,10 +508,27 @@ function closeModal()   { modal=null; editId=null; deleteId=null; render(); }
 
 async function adjustQty(id, delta) {
   const item = items.find(i=>i.id===id);
+
   if (!item) return;
-  const updated = {...item, quantity:parseFloat(Math.max(0,parseFloat(item.quantity)+delta).toFixed(2))};
-  if (!isLow(item) && isLow(updated)) sendLowAlert(updated);
+
+  const updated = {
+    ...item,
+    quantity: parseFloat(
+      Math.max(0, parseFloat(item.quantity) + delta).toFixed(2)
+    )
+  };
+
+  if (!isLow(item) && isLow(updated)) {
+    sendLowAlert(updated);
+  }
+
   await writeItem(updated);
+
+  await logAction({
+    item: updated,
+    action: delta > 0 ? "increase" : "decrease",
+    quantity: delta
+  });
 }
 
 function readForm() {
