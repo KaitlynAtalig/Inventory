@@ -169,12 +169,50 @@ input:focus,select:focus { border-color:var(--amber); background:var(--bg); box-
 @keyframes toastIn  { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
 @keyframes toastOut { from{opacity:1;transform:translateX(-50%) translateY(0)} to{opacity:0;transform:translateX(-50%) translateY(10px)} }
 
+  /* Floating Add Button */
+.fab-add {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 100;
+  background: var(--amber);
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  padding: 13px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 8px 24px rgba(193,125,46,0.35);
+  transition: all 0.15s;
+}
+.fab-add:hover { background: var(--amber-dark); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(193,125,46,0.45); }
+@media (max-width:580px) {
+  .fab-add { bottom: 1rem; right: 1rem; padding: 12px 16px; }
+}
+  
 @media (max-width:580px) {
   .page { padding:1.25rem .85rem 3rem; }
   .col-hide { display:none; }
-  .header { padding:1.25rem; }
+  .header { padding:1.25rem; flex-direction:column; align-items:flex-start; }
   .header h1 { font-size:18px; }
+  .header-right { width:100%; justify-content:flex-start; }
+  .btn-add, .btn-notify { font-size:13px; padding:9px 14px; }
   td,th { padding-left:12px; padding-right:12px; }
+  .qty-btn { width:34px; height:34px; font-size:20px; }
+  .qty-num { font-size:16px; }
+  .stats-row { grid-template-columns: repeat(3,1fr); }
+  .toolbar { flex-direction:column; align-items:stretch; }
+  .search-input { width:100%; }
+  .tabs { justify-content:flex-start; overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; }
+  .tab { flex-shrink:0; }
+  .modal { padding:1.5rem 1.25rem; }
+  .form-row { grid-template-columns:1fr; }
+  table { font-size:13px; }
 }
 </style>
 </head>
@@ -563,7 +601,15 @@ async function doDelete() {
 }
 
 // ── RENDER ─────────────────────────────────────────────────────
-function render() { document.getElementById("app").innerHTML = buildApp(); }
+function render() {
+  const wasSearch = document.activeElement?.classList.contains('search-input');
+  const cursor = wasSearch ? document.activeElement.selectionStart : null;
+  document.getElementById("app").innerHTML = buildApp();
+  if (wasSearch) {
+    const el = document.querySelector('.search-input');
+    if (el) { el.focus(); el.setSelectionRange(cursor, cursor); }
+  }
+}
 
 function buildApp() {
   const low    = getLow();
@@ -710,6 +756,8 @@ ${modal==="delete"?(()=>{
 </div>`;
 })():""}
 `;
+
+  <button class="fab-add" onclick="openAdd()">${SVG.plus(15)} Add item</button>
 }
 
 // ── INIT ───────────────────────────────────────────────────────
