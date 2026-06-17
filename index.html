@@ -561,12 +561,6 @@ async function adjustQty(id, delta) {
   }
 
   await writeItem(updated);
-
-  await logAction({
-    item: updated,
-    action: delta > 0 ? "increase" : "decrease",
-    quantity: delta
-  });
 }
 
 function readForm() {
@@ -755,9 +749,9 @@ ${modal==="delete"?(()=>{
   </div>
 </div>`;
 })():""}
-`;
 
-  <button class="fab-add" onclick="openAdd()">${SVG.plus(15)} Add item</button>
+<button class="fab-add" onclick="openAdd()" aria-label="Add item">${SVG.plus(18)}</button>
+`;
 }
 
 // ── INIT ───────────────────────────────────────────────────────
